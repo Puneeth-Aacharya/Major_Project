@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>
+            Smart Electrical Energy monitoring System
+        </title>
+       <link rel="stylesheet" href="{{ url_for('static', filename='nav.css') }}"/>
+       
+    </head>
+    <body>
+        <div class="topnav">
+            <a class="active" href="{{ url_for('index') }}">Home</a>
+            <a href="#contact">Contact</a>
+            <a href="#about">About</a>
+            <a href="{{ url_for('main') }}">Send</a>
+            <a href="{{ url_for('get') }}">View Data</a>
+          </div>
+    </body>
+</html>
