@@ -18,12 +18,13 @@
             </div>
             <div class="right_page"> 
                 <form action="http://127.0.0.1:5000/login" method="POST">
+                    <input id="csrf_token" type="hidden" name="_csrf_token" value="{{ csrf_token()}}">
                     <table class="table">
                         <tr><td><input type="email" name="email" placeholder="Enter Email"></td></tr>
                         <tr><td><input type="text" name="meter_id" placeholder="Energy meter ID"></td></tr>
                         <tr><td><input type="password" name="password" placeholder="Enter Password"></td></tr>
                         <tr></tr><tr></tr><tr></tr>
-                        <tr><td><a  href="">Forgot password?</a></td><td><a href="{{ url_for('register') }}">Sign Up</a></td></tr>
+                        <tr><td><a  href="{{ url_for('forgot') }}">Forgot password?</a></td><td><a href="{{ url_for('register') }}">Sign Up</a></td></tr>
                     </table>
                     <br><br>
                     <input id="submit" type="submit" name="submit" value="Login">

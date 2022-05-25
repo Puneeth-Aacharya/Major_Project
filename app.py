@@ -1,11 +1,11 @@
-
+import datetime
 import re
+import atexit
 from urllib import response
 from flask import Flask
 from flask import request, jsonify,render_template,request,make_response
 import json
-from flask_admin.contrib.sqla import ModelView
-from flask_admin import Admin
+
 from flask_wtf import Form
 from wtforms import TextField, IntegerField, TextAreaField, SubmitField, PasswordField
 from wtforms import validators, ValidationError
@@ -13,6 +13,8 @@ from wtforms.validators import DataRequired,InputRequired,Email
 from wtforms.fields.html5 import EmailField
 from werkzeug.security import generate_password_hash, check_password_hash
 from passlib.hash import pbkdf2_sha256
+from flask_apscheduler import APScheduler
+#from flask_wtf.csrf import CSRFProtect
 
 
 import urllib.request
@@ -21,12 +23,17 @@ import json
 import time
 from flask_mongoengine import MongoEngine
 import requests,random
-
+from flaskext.csrf import csrf
 
 app = Flask(__name__)
+sc=APScheduler()
 
+csrf(app)
 
-app.secret_key='development key'
+#app.secret_key='development key'
+#csrf_token=CSRFProtect(app)
+app.config['SECRET_KEY']='secret'
+#csrf_token.init_app(app)
 '''
 DB_URI = "mongodb+srv://Puneeth:puneeth@cluster0.h225z.mongodb.net/IOT_ENERGY_MONITORING_SYSTEM?retryWrites=true&w=majority"
 app.config["MONGODB_HOST"] = DB_URI
@@ -51,7 +58,7 @@ class blinks(db.Document):
     meter_id=db.StringField()
     blink_count=db.IntField()
     price=db.FloatField()
-    date = db.StringField()
+    date = db.DateTimeField()
     time = db.StringField()
 
 
@@ -74,8 +81,24 @@ class register_user(db.Document):
 def index():
     return render_template("index.html")
 
+@app.route('/contact')
+def contact():
+    return render_template("contact.html")
+
+@app.route('/forgot')
+def forgot():
+    return render_template("forgot.html")
+
+@app.route('/about')
+def about():
+    return render_template("about.html")
+
+@app.route('/change')
+def change():
+    return render_template("changePassword.html")
 
 
+cookie_list=[]
 
 @app.route('/register_data',methods=['POST'])
 def register_data():
@@ -178,27 +201,35 @@ def login():
             if decrypt!=True:
                 flag=False
             if flag==True:
+                #------------------
+                '''
                 ts_id= [str(u2.thingspeak_id) for u2 in user_meter_id]
                 if ts_id:
                     ts_id=ts_id[0]
                     data=blinks.objects(user_id=ts_id)
+                #--------------------
                     if data:
-                        
-                        resp=make_response(render_template("user_dashboard.html"))
-                        resp.set_cookie('email',email)
-                        resp.set_cookie('meter_id',meter_id)
-                        
-                        return render_template("profile.html",data="Successfully Logged In")
-                        
-                    else:
-                        return render_template("error.html",data="User Not Found !")
+                '''
+                cookie_list.append(email)
+                cookie_list.append(meter_id)
+                time=datetime.datetime.now()+datetime.timedelta(days=30)
+                resp=make_response(render_template("user_dashboard.html"))
+                resp.set_cookie('email',email,max_age=60*60*24*365*2)
+                resp.set_cookie('meter_id',meter_id,max_age=60*60*24*365*2)
+
+                return render_template("profile.html",data="Successfully Logged In")
+                '''            
                 else:
                     return render_template("error.html",data="User Not Found !")
+                '''
             else:
-                return render_template("error.html",data="You have Entered wrong Password")
+                return render_template("error.html",data="User Not Found !")
         else:
-            return render_template("error.html",data="You have entered wrong Email or Energy meter ID",link="url_for('login')")
-    
+            return render_template("error.html",data="You have Entered wrong Password")
+    '''
+    else:
+        return render_template("error.html",data="You have entered wrong Email or Energy meter ID",link="url_for('login')")
+    '''
 
 
 
@@ -216,6 +247,7 @@ def update_data():
     
     c.save()
     return ("you have consumed "+str(int(record['blinks_count'])/3200)+" KWh and Your bill is   "+str(int(record['blinks_count'])*0.00125))
+
 
 @app.route('/main')
 def main():
@@ -272,6 +304,52 @@ def main():
     return jsonify(response.text)
 
 
+
+
+@app.route('/filter_wrt_date',methods=['GET','POST'])
+def filter_wrt_date():
+    date1=request.form['date1']
+    date2=request.form['date2']
+    meter_id=request.form['meter_id']
+
+    data=register_user.objects(meter_id=meter_id)
+    ts_id=[str(i.thingspeak_id) for i in data]
+    ts_id=ts_id[0]
+    
+
+    area=[str(i.area) for i in data]
+    area=area[0]
+    
+
+    if area=="Rural":
+        one_unit_price=4
+        fixed_charge=75
+    else:
+        one_unit_price=7
+        fixed_charge=100
+
+    user_data=blinks.objects(user_id=ts_id,date__gte=date1,date__lte=date2)
+
+    if user_data:
+
+        user_price=[float(i.price) for i in user_data]
+        price=user_price[-1]
+        #response.set_cookie('email',email)
+        #total_price=sum(user_price)
+
+        total_units=[float(i.blink_count) for i in user_data]
+        total_blinks=total_units[-1]
+
+        total_units=total_blinks/3200
+
+        #return jsonify(total_blinks)
+
+        total_amount_to_be_paid=fixed_charge+price
+        return render_template("user_dashboard.html",one_unit_price=one_unit_price,price=price,total_units=total_units,fixed_charge=fixed_charge,total_amount_to_be_paid=total_amount_to_be_paid,meter_id=request.cookies.get('meter_id'))
+    else:
+        return render_template("user_dashboard.html",one_unit_price=one_unit_price,price=0,total_units=0,fixed_charge=fixed_charge,total_amount_to_be_paid=fixed_charge,meter_id=request.cookies.get('meter_id'))
+    
+
 @app.route('/get')
 def get():
     data=blinks.objects()
@@ -280,7 +358,9 @@ def get():
 
 @app.route('/user_dashboard',methods=['GET','POST'])
 def user_dashboard():
-    data=register_user.objects(email=request.cookies.get('email'),meter_id=request.cookies.get('meter_id'))
+    #data=register_user.objects(email=request.cookies.get('email'),meter_id=request.cookies.get('meter_id'))
+
+    data=register_user.objects(email=cookie_list[0],meter_id=cookie_list[1])
     
     area=[str(i.area) for i in data]
     area=area[0]
@@ -308,8 +388,8 @@ def user_dashboard():
     #return jsonify(total_blinks)
 
     total_amount_to_be_paid=fixed_charge+price
-    return render_template("user_dashboard.html",one_unit_price=one_unit_price,price=price,total_units=total_units,fixed_charge=fixed_charge,total_amount_to_be_paid=total_amount_to_be_paid)
-    pass
+    return render_template("user_dashboard.html",meter_id=request.cookies.get('meter_id'),one_unit_price=one_unit_price,price=price,total_units=total_units,fixed_charge=fixed_charge,total_amount_to_be_paid=total_amount_to_be_paid)
+    
 
 @app.route('/nodemcu',methods=['POST','GET'])
 def nodemcu():
@@ -321,4 +401,6 @@ def nodemcu():
             return jsonify("data received")
 
 if __name__=="__main__":
+    #sc.add_job(id='main',func=main,trigger="interval",seconds=10)
+    #sc.start()
     app.run(debug=True)
