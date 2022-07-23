@@ -6,8 +6,11 @@
     border: 1px solid rgb(139, 138, 138);
     
 }
+.container-fluid{
+    padding: 0px;
+}
 .contact{
-    padding: 20rem;
+    padding: 5rem;
     padding-top: 0%;
     padding-bottom: 0%;
 }
