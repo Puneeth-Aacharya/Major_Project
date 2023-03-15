@@ -38,7 +38,7 @@ app.secret_key='development key'
 app.config['SECRET_KEY']='secret'
 #csrf_token.init_app(app)
 '''
-DB_URI = "mongodb+srv://Puneeth:puneeth@cluster0.h225z.mongodb.net/IOT_ENERGY_MONITORING_SYSTEM?retryWrites=true&w=majority"
+DB_URI = "#MongoDB Atlas URL here"
 app.config["MONGODB_HOST"] = DB_URI
 '''
 app.config['MONGODB_SETTINGS'] = {
